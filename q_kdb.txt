@@ -1,0 +1,16 @@
+how to start q
+
+executable q.exe
+by default q is running in C:\q or /usr/bin/q
+if you want it to run a different directory run
+
+cd c:\florin\q
+set QHOME=c:\florin\q
+q.exe
+
+documentation
+abridged q documentation: http://kx.com/q/d/q.htm
+
+force garbage collection:
+.Q.gc[]
+

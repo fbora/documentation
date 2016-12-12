@@ -1,0 +1,138 @@
+__author__ = 'boraflor'
+
+import kagglegym
+import numpy as np
+import pandas as pd
+from sklearn import linear_model, ensemble
+from sklearn import cluster
+from datetime import datetime
+from multiprocessing import Pool
+
+
+def featureSelection(data):
+    featureDict = dict()
+    for id in np.unique(data.id):
+        print('{} fitting id={}'.format(datetime.now().strftime('%H:%M:%S'), id))
+        idData = data[data.id == id]
+        y = idData.y
+        X = idData.drop('y', axis=1)
+        model = ensemble.RandomForestRegressor().fit(X,y)
+        importances = pd.Series(model.feature_importances_, X.columns).sort_values(ascending=False)
+        featureDict[id] = pd.Series(range(len(importances)), index=importances.index.values )
+    featureDF = pd.DataFrame.from_dict(featureDict)
+    features = featureDF.sum(axis=1).sort_values(ascending=True)
+    return features
+
+
+def fitEachID(data, cols=None):
+    modelDict = dict()
+    for id in np.unique(data.id):
+        print('{} fitting id={}'.format(datetime.now().strftime('%H:%M:%S'), id))
+        idData = data[data.id == id]
+        y = idData.y
+        X = idData.drop('y', axis=1)
+        if cols is not None:
+            X=X[cols]
+        model = ensemble.RandomForestRegressor().fit(X,y)
+        modelDict[id] = model
+    return modelDict
+
+
+def predictY(features, modelDict, clusters):
+    ySeries = pd.Series(np.zeros(len(features.index)), index=features.index)
+    for label in np.unique(clusters.values):
+        model = modelDict[label]
+        clusterIds = clusters[clusters.values == label].index.values
+        clusterFeatures = features[features.id.isin(clusterIds)]
+        if len(clusterFeatures)==0:
+            continue
+        X = clusterFeatures#.drop(['id', 'timestamp'], axis=1)
+        cluster_y = model.predict(X)
+        ySeries.loc[X.index] = pd.Series(cluster_y, index=X.index)
+    return ySeries
+
+def predictY_RF(features, modelDict, cols=None):
+    ySeries = pd.Series(np.zeros(len(features.index)), index=features.index)
+    for id in features.id.values:
+        if id not in modelDict.keys():
+            continue
+        model = modelDict[id]
+        idFeatures = features[features.id==id]
+        X = idFeatures#.drop(['id', 'timestamp'], axis=1)
+        if cols is not None:
+            X=X[cols]
+        cluster_y = model.predict(X)
+        ySeries.loc[X.index] = pd.Series(cluster_y, index=X.index)
+    return ySeries
+
+
+def predictY_RF_parallel(features, modelDict):
+    ySeries = pd.Series(np.zeros(len(features.index)), index=features.index)
+    ids = features.id.values
+    p = Pool()
+    def f(x):
+        idFeatures = features[features.id==id]
+        if x not in modelDict.keys():
+            return None
+        model = modelDict[x]
+        X = idFeatures#.drop(['id', 'timestamp'], axis=1)
+        cluster_y = model.predict(X)
+        return cluster_y
+    fbora = p.map(f, ids)
+    print(fbora)
+    return ySeries
+
+
+def main():
+    start = datetime.now()
+    print("{} start".format( start.strftime('%H:%M:%S')))
+    # The "environment" is our interface for code competitions
+    env = kagglegym.make()
+
+    # We get our initial observation by calling "reset"
+    observation = env.reset()
+
+    print("{} computing predictor models".format( datetime.now().strftime('%H:%M:%S')))
+    train = observation.train
+    mean = train.mean(axis=0)
+    train.fillna(mean, axis=0, inplace=True)
+    # clusters = clusterY(train, 1)
+
+    # modelDict = fitEachCluster(train, clusters)
+    # features = featureSelection(train)
+    cols = ['technical_33', 'technical_30', 'technical_20', 'technical_41',
+            'technical_24', 'technical_13', 'technical_3', 'technical_1',
+            'technical_5', 'technical_31', 'technical_25', 'technical_44',
+            'technical_21', 'technical_28', 'technical_19', 'technical_27',
+            'technical_36', 'fundamental_41', 'technical_35', 'technical_17',
+            'technical_40', 'fundamental_42', 'fundamental_0', 'fundamental_62',
+            'technical_7', 'technical_2', 'derived_3', 'fundamental_53',
+            'fundamental_7', 'timestamp']
+    cols = None
+    modelDict = fitEachID(train, cols)
+
+
+    print("{} predicting output for timestamps".format( datetime.now().strftime('%H:%M:%S')))
+
+    while True:
+        target = observation.target
+        features = observation.features
+        features.fillna(mean, axis=0, inplace=True)
+        predicted_y = predictY_RF(features.copy(), modelDict, cols)
+        target.y = predicted_y
+        timestamp = observation.features["timestamp"][0]
+        print("{} Timestamp #{}".format(datetime.now().strftime('%H:%M:%S'), timestamp))
+
+        if timestamp % 100 == 0:
+            print("{} Timestamp #{}".format(datetime.now().strftime('%H:%M:%S'), timestamp))
+        observation, reward, done, info = env.step(target)
+        if done:
+            print("Public score: {}".format(info["public_score"]))
+            end = datetime.now()
+            runtime = end-start
+            print("{} scoring complete; total run time {}m {}s".format(
+                end.strftime('%H:%M:%S'), (runtime.seconds//60)%60, runtime.seconds%60))
+            break
+
+if __name__=='__main__':
+    main()

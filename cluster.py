@@ -4,6 +4,27 @@ import pandas as pd
 from sklearn import linear_model, ensemble
 from sklearn import cluster
 
+def createLaggedDF(data, lag=1):
+    if os.path.isfile('./lagged.pkl'):
+        return pd.read_pickle('./lagged.pkl')
+    lagDict = dict()
+    for id in np.unique(data.id):
+    # for id in [1431, 1522, 1703, 1906]:
+        idData = data[data.id == id].sort_values('timestamp', ascending=True)
+        idLagged = (idData/idData.shift(1))-1.0
+        idLagged.drop(['y', 'id', 'timestamp'], axis=1, inplace=True)
+        suffix = "_lag_{}".format(lag)
+        idLagged.columns = np.array([x+suffix for x in idLagged.columns])
+        merged = pd.concat([idData, idLagged],  axis=1)
+        # try to fill nan/inf by id first => better cleaning
+        lagDict[id] = merged
+        c = merged.corr()['y'].sort_values()
+        print(5*'*'+'   id={}   '.format(id)+5*'*')
+        print(c[abs(c).sort_values(ascending=False).index.values][1:6])
+    lagged = pd.concat([v for v in lagDict.values()])
+    lagged.replace([np.inf, -np.inf], np.nan, inplace=True)
+    lagged.to_pickle("./lagged.pkl")
+    return lagged
 
 def clusterY(rets, nclusters):
     clustertrain = train[['id', 'timestamp', 'y']].pivot(index='timestamp', columns='id')

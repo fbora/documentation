@@ -1,3 +1,11 @@
+# API used to get data from Bloomberg terminal.  There are two separate funtions: 
+# 1. for reference fields i.e. fields that do not change in time: sector, industry, etc
+# 2. for historical data.  Note that this API only returns EOD data. If called with the 
+#    last date to be the current date within trading hours the API will return the most
+#    recent value of the field.
+# blpapi needs to be installed. It's not straight forward to find a package that is
+#    compatible with the system architecture, python version, package latest version.
+
 import datetime
 import blpapi
 import numpy as np

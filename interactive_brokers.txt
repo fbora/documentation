@@ -1,0 +1,88 @@
+Install the latest version of the Interactive Brokers Gateway from:
+https://www.interactivebrokers.com/en/index.php?f=16457&ns=T
+the location of the application on disk:
+~/Applications/
+
+IBC is an open source software that starts the gateway automatically.
+Download from git hub:
+https://github.com/IbcAlpha/IBC
+and ask for help on the following user google groups:
+https://groups.io/g/ibcalpha for issues related to using IBC
+https://groups.io/g/twsapi for issues related to IB API
+
+add executing permissions to .sh files in Scripts directory
+sudo chmod o+x *.sh */*.sh
+
+Note that as of May 2020 there is an error in the ibcstart.sh script that was not fixed in the release.
+see this thread on the google group https://groups.io/g/ibcalpha/topic/24239631#673
+You need to download ibcstart.sh directly from github and replace the release file
+
+on OSX the shell file that starts the gateway gives an error on the if ... fi statement on the bottom of the script
+Comment if ... fi statement and replace with
+echo exec "${IBC_PATH}/scripts/DisplayBannerAndLaunch.sh"
+exec "${IBC_PATH}/scripts/DisplayBannerAndLaunch.sh"
+
+In OSX Interactive Brokers Gateway can only be started with the lauchd daemon (chrontab does not work).
+In ~/Library/LaunchAgents you need to write a file with the extension .plist that will create the job to start the application.
+
+Sample start_ib_gateway.plist (normally you should be able to put days 1-5 range like crontab,
+but for some reason it didn't work for me, so I had to put an entry for each day of the week)
+The .plist needs to be loaded in the LaunchDaemons:
+sudo launchctl load -w ~/Library/LaunchAgents/start_ib_gateway.plist
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>start_ib_gateway</string>
+        <key>Program</key>
+        <string>/Users/florin/projects/ibc/start_ib_gateway_live.sh</string>
+        <key>StartCalendarInterval</key>
+        <array>
+        <dict>
+            <key>Weekday</key>
+            <integer>1</integer>
+            <key>Hour</key>
+            <integer>5</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key>
+            <integer>2</integer>
+            <key>Hour</key>
+            <integer>5</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key>
+            <integer>3</integer>
+            <key>Hour</key>
+            <integer>5</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key>
+            <integer>4</integer>
+            <key>Hour</key>
+            <integer>5</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key>
+            <integer>5</integer>
+            <key>Hour</key>
+            <integer>5</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        </array>
+    </dict>
+</plist>
+
+

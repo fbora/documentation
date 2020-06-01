@@ -3,6 +3,10 @@ https://www.interactivebrokers.com/en/index.php?f=16457&ns=T
 the location of the application on disk:
 ~/Applications/
 
+Install the latest version of the python API from:
+http://interactivebrokers.github.io/#
+the package includes python, java and cpp
+
 IBC is an open source software that starts the gateway automatically.
 Download from git hub:
 https://github.com/IbcAlpha/IBC
